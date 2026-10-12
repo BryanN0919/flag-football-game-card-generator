@@ -1050,12 +1050,40 @@
           const imgData = canvas.toDataURL("image/jpeg", 1.0);
           const pdf = new jsPDF("p", "in", "letter");
           pdf.addImage(imgData, "JPEG", 0, 0, 8.5, 11);
-          pdf.save("flag-football-game-cards.pdf");
+          // Build the PDF filename from the selected game date and teams.
+          const safeFilenamePart = (value, fallback) =>
+            (value || "").trim()
+              .replace(/[^a-zA-Z0-9\s-]/g, "")
+              .replace(/\s+/g, "-")
+              .replace(/-+/g, "-")
+              .replace(/^-|-$/g, "") || fallback;
+          const gameDate = /^\d{4}-\d{2}-\d{2}$/.test(state.gameDate || "")
+            ? state.gameDate : "undated";
+          const homeTeam = safeFilenamePart(state.homeTeam, "Home");
+          const awayTeam = safeFilenamePart(state.awayTeam, "Away");
+          pdf.save(`${gameDate}-${homeTeam}-${awayTeam}-ff-game-card.pdf`);
         } catch (err) {
           console.error("PDF generation error:", err);
           window.print();
         }
       });
+
+      // // Download PDF Button
+      // document.getElementById("pdfBtn").addEventListener("click", async () => {
+      //   const { jsPDF } = window.jspdf;
+      //   const sheet = document.getElementById("sheet");
+
+      //   try {
+      //     const canvas = await html2canvas(sheet, { scale: 2, useCORS: true });
+      //     const imgData = canvas.toDataURL("image/jpeg", 1.0);
+      //     const pdf = new jsPDF("p", "in", "letter");
+      //     pdf.addImage(imgData, "JPEG", 0, 0, 8.5, 11);
+      //     pdf.save("flag-football-game-cards.pdf");
+      //   } catch (err) {
+      //     console.error("PDF generation error:", err);
+      //     window.print();
+      //   }
+      // });
 
       // Logo File Uploader Triggers
       document.getElementById("changeLogo1").addEventListener("click", () => {
