@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flag Football Game Card Generator</title>
+  <meta name="description" content="Create printable flag football officials game cards for 3- and 4-person crews." />
+
+  <!-- External libraries for rendering HTML to Canvas & PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --navy: #763b70;
+      --navy-dark: #4e254c;
+      --blue: #b44c91;
+      --green: #8d5aab;
+      --ink: #3f2942;
+      --muted: #856d83;
+      --line: #e8d3e4;
+      --panel: #ffffff;
+      --page: #fff4fa;
+      --grayband: #ffd1dc; /* Light pink default band color */
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--page);
+    }
+
+    /* Top Bar */
+    .topbar {
+      height: 68px;
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .football-mark {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      transform: rotate(-24deg);
+      line-height: 1;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .top-actions button {
+      min-width: 100px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      height: 38px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .top-actions button:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .top-actions .print {
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+    .top-actions .print:hover {
+      background: #0c62c9;
+    }
+
+    .top-actions .pdf {
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .top-actions .pdf:hover {
+      background: #27993a;
+    }
+
+    /* Main Application Grid Layout */
+    .app {
+      display: flex;
+      min-height: calc(100vh - 68px);
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .sidebar {
+      width: 400px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--line);
+      background: #fff;
+      padding: 24px 20px;
+      overflow-y: auto;
+      max-height: calc(100vh - 68px);
+    }
+
+    .section {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--navy);
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .crew-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .crew-btn {
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      color: #334155;
+      border-radius: 6px;
+      height: 38px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.15s ease;
+    }
+
+    .crew-btn:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .crew-btn.active {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #344054;
+      margin-bottom: 6px;
+    }
+
+    .optional {
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    input[type="text"], input[type="date"], input[type="time"] {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 12px;
+      font-size: 13px;
+      color: #101828;
+      background: #ffffff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(14, 115, 232, 0.15);
+    }
+
+    .official-grid {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      row-gap: 12px;
+      column-gap: 10px;
+      align-items: center;
+    }
+
+    .official-grid .position-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #344054;
+    }
+
+    .logo-item {
+      margin-bottom: 16px;
+    }
+
+    .logo-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .logo-preview-box {
+      width: 80px;
+      height: 54px;
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      background: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 4px;
+    }
+
+    .logo-preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .small-btn {
+      height: 36px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .small-btn:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .small-btn.reset {
+      border-color: #fecdd3;
+      color: #e11d48;
+      background: #fff1f2;
+    }
+    .small-btn.reset:hover {
+      background: #ffe4e6;
+    }
+
+    .saved-note {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #166534;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .check-icon {
+      width: 20px;
+      height: 20px;
+      background: #22c55e;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    /* Main Preview Area */
+    .main {
+      flex: 1;
+      background: var(--page);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+    }
+
+    .preview-header {
+      width: 100%;
+      max-width: 8.5in;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .preview-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--navy);
+      letter-spacing: 0.5px;
+    }
+
+    .preview-wrap {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      background: #fff;
+      padding: 0;
+      margin: 0 auto;
+    }
+
+    /* Printable Page Layout (8.5" x 11") */
+    #sheet {
+      width: 8.5in;
+      height: 11in;
+      box-sizing: border-box;
+      padding: 0.25in;
+      background: #ffffff;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: max-content max-content;
+      align-content: start;
+      gap: 0.2in;
+    }
+
+    /* Individual Printable Card */
+    .game-card {
+      border: 2px solid #111;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      overflow: hidden;
+      height: auto;
+      box-sizing: border-box;
+    }
+
+    .logos {
+      height: 1.25in;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0.1in 0.2in;
+      gap: 0.1in;
+      background: #fff;
+    }
+
+    .logos img {
+      max-width: 45%;
+      max-height: 1in;
+      object-fit: contain;
+    }
+
+    .game-info {
+      background: var(--grayband) !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      border-top: 4px solid #111;
+      border-bottom: 4px solid #111;
+      text-align: center;
+      padding: 0.08in 0.1in;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .teams {
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #000;
+    }
+
+    .game-date {
+      font-size: 14px;
+      line-height: 1.15;
+      margin-top: 3px;
+      font-weight: 700;
+      color: #0d2880;
+    }
+
+    .meta-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #111;
+    }
+
+    .crew-list {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0.12in 0.15in;
+      gap: 0.08in;
+      flex: 0 0 auto;
+    }
+
+    .crew-row {
+      display: grid;
+      grid-template-columns: 42% 58%;
+      align-items: center;
+      line-height: 1.2;
+    }
+
+    .card-position {
+      text-align: right;
+      padding-right: 0.1in;
+      font-size: 15px;
+      font-weight: 600;
+      color: #222;
+    }
+
+    .card-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #000;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .preview-tip {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Print Stylesheet Overrides */
+    @page {
+      size: letter portrait;
+      margin: 0;
+    }
+
+    @media print {
+      html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 8.5in;
+        height: 11in;
+      }
+      
+      .topbar, .sidebar, .preview-header, .preview-tip {
+        display: none !important;
+      }
+
+      .app {
+        display: block !important;
+        min-height: 0 !important;
+      }
+
+      .main {
+        padding: 0 !important;
+        background: transparent !important;
+      }
+
+      .preview-wrap {
+        box-shadow: none !important;
+      }
+
+      #sheet {
+        width: 8.5in !important;
+        height: 11in !important;
+        margin: 0 !important;
+        padding: 0.25in !important;
+        page-break-after: always;
+      }
+
+      .game-info {
+        background: var(--grayband) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+
+    /* Responsive scaling for smaller viewports */
+    @media (max-width: 1024px) {
+      .app {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+      .preview-wrap {
+        transform: scale(0.85);
+        transform-origin: top center;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .preview-wrap {
+        transform: scale(0.65);
+      }
+    }
+
+    /* Rose & lavender interface: print cards intentionally remain white. */
+    .topbar { background: linear-gradient(115deg, #653363, #a14f8c 65%, #c577a9); }
+    .sidebar { background: #fffafd; }
+    .main { background: radial-gradient(circle at top, #fff5fb, var(--page) 70%); }
+    .section-title { color: #853b79; }
+    .crew-btn { background: #fff4fa; border-color: #e8cddd; color: #67385e; }
+    .crew-btn.active { background: #9b4e8c; border-color: #9b4e8c; color: white; }
+    .crew-btn:hover { background: #fbe4f3; }
+    .crew-btn.active:hover { background: #854077; }
+    .small-btn { background: #fff4fa; color: #67385e; }
+    .preview-title { color: #853b79; }
+    .top-actions .print { background: #173b70; border: 2px solid #ffffff; color: #ffffff; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+    .top-actions .pdf { background: #8660ac; border-color: #8660ac; }
+    .top-actions .print:hover { background: #0d2b55; border-color: #ffffff; }
+    .top-actions .print:focus-visible { outline: 3px solid #ffdc70; outline-offset: 3px; }
+    :root[data-appearance="dark"] .top-actions .print { background: #f6c453; color: #25172c; border-color: #fff2ca; }
+    :root[data-appearance="dark"] .top-actions .print:hover { background: #ffdc80; }
+    .top-actions .pdf:hover { background: #704c95; }
+    input[type="text"], input[type="date"], input[type="time"] { border-color: #e8d3e4; }
+    :root[data-appearance="dark"] {
+      --navy: #e9a7d6; --blue: #e19acb; --ink: #f5e7f3;
+      --muted: #c6aac7; --line: #59405a; --panel: #302438; --page: #1c1723;
+    }
+    :root[data-appearance="dark"] .topbar { background: linear-gradient(115deg, #24172e, #503053 70%, #633a60); }
+    :root[data-appearance="dark"] .sidebar { background: #292130; border-color: #59405a; }
+    :root[data-appearance="dark"] .main { background: radial-gradient(circle at top, #2b2032, #1c1723 75%); }
+    :root[data-appearance="dark"] .section { border-bottom-color: #49364b; }
+    :root[data-appearance="dark"] .section-title,
+    :root[data-appearance="dark"] .preview-title { color: #f0afd8; }
+    :root[data-appearance="dark"] label,
+    :root[data-appearance="dark"] .official-grid .position-label { color: #e5d1e4; }
+    :root[data-appearance="dark"] .crew-btn { background: #3c2c44; color: #f3d7e9; border-color: #684b69; }
+    :root[data-appearance="dark"] .crew-btn.active { background: #b965a2; color: #fff; border-color: #d487ba; }
+    :root[data-appearance="dark"] .crew-btn:hover { background: #624064; }
+    :root[data-appearance="dark"] .small-btn { background: #3b2c42; color: #f1d7e8; border-color: #684b69; }
+    :root[data-appearance="dark"] .small-btn.reset { background: #522c45; color: #ffc4da; border-color: #854d69; }
+    :root[data-appearance="dark"] .logo-preview-box { background: #fdf8fc; }
+    :root[data-appearance="dark"] .saved-note { background: #263c32; border-color: #41694e; color: #c3eed0; }
+    :root[data-appearance="dark"] input[type="text"],
+    :root[data-appearance="dark"] input[type="date"],
+    :root[data-appearance="dark"] input[type="time"] { background: #382b40; color: #fff0f8; border-color: #69536b; color-scheme: dark; }
+    :root[data-appearance="dark"] .preview-tip { color: #c6aac7; }
+    /* Keep printable cards and PDF rendering consistent in either mode. */
+    :root[data-appearance="dark"] #sheet,
+    :root[data-appearance="dark"] .game-card,
+    :root[data-appearance="dark"] .logos { background: #fff; color: #111; }
+    @media (max-width: 700px) {
+      .topbar { height: auto; min-height: 68px; flex-wrap: wrap; gap: 10px; padding: 12px; }
+      .top-actions { flex-wrap: wrap; }
+      .top-actions button { min-width: 0; padding: 0 10px; }
+    }
+    @media print {
+      :root[data-appearance="dark"] html,
+      :root[data-appearance="dark"] body { background: #fff !important; }
+    }
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="football-mark">🏈</div>
+      <div>
+        <h1>FLAG FOOTBALL GAME CARD GENERATOR</h1>
+        <p>Create professional game cards for flag football officials</p>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button type="button" id="modeToggle" aria-pressed="false" title="Switch between light and dark appearance">🌙 Dark Mode</button>
+      <button id="clearAll">Clear All</button>
+      <button class="print" id="printBtn">🖨️ Print</button>
+      <button class="pdf" id="pdfBtn">⬇️ Download PDF</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <aside class="sidebar">
+      <!-- Section 1: Game Information -->
+      <section class="section">
+        <div class="section-title">1. GAME INFORMATION</div>
+
+        <label>Crew Size</label>
+        <div class="crew-buttons">
+          <button type="button" class="crew-btn" id="crew3Btn" data-size="3">3-PERSON</button>
+          <button type="button" class="crew-btn active" id="crew4Btn" data-size="4">4-PERSON</button>
+        </div>
+
+        <label>Card Band Color</label>
+        <div class="crew-buttons">
+          <button type="button" class="crew-btn active" id="pinkThemeBtn">Light Pink</button>
+          <button type="button" class="crew-btn" id="grayThemeBtn">Grey</button>
+        </div>
+
+        <div class="field">
+          <label for="homeTeam">Home Team</label>
+          <input type="text" id="homeTeam" value="Bulldogs" placeholder="e.g. Bulldogs" />
+        </div>
+
+        <div class="field">
+          <label for="awayTeam">Away Team</label>
+          <input type="text" id="awayTeam" value="Titans" placeholder="e.g. Titans" />
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label for="gameDate">Game Date</label>
+            <input type="date" id="gameDate" value="2026-10-18" />
+          </div>
+          <div class="field">
+            <label for="kickoff">Kickoff Time <span class="optional">(Optional)</span></label>
+            <input type="time" id="kickoff" value="10:00" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="location">Game Location <span class="optional">(Optional)</span></label>
+          <input type="text" id="location" value="Memorial Park Field 1" placeholder="e.g. Main Stadium" />
+        </div>
+      </section>
+
+      <!-- Section 2: Officials Input Fields -->
+      <section class="section">
+        <div class="section-title">2. OFFICIALS</div>
+
+        <div class="official-grid">
+          <div class="position-label">Referee</div>
+          <input type="text" id="referee" value="Bryan Norfleet" placeholder="Referee Name" />
+
+          <div class="position-label">Line Judge</div>
+          <input type="text" id="lineJudge" value="Line Judge" placeholder="Line Judge Name" />
+
+          <div class="position-label">Back Judge</div>
+          <input type="text" id="backJudge" value="Back Judge" placeholder="Back Judge Name" />
+
+          <div class="position-label" id="fieldJudgeLabel">Field Judge</div>
+          <input type="text" id="fieldJudge" value="Field Judge" placeholder="Field Judge Name" />
+        </div>
+      </section>
+
+      <!-- Section 3: Association Logo File Uploader -->
+      <section class="section">
+        <div class="section-title">3. ASSOCIATION LOGOS</div>
+
+        <div class="logo-item">
+          <label>Left Logo</label>
+          <div class="logo-row">
+            <div class="logo-preview-box">
+              <img id="logo1Preview" src="" alt="Left logo preview" />
+            </div>
+            <button type="button" class="small-btn" id="changeLogo1">Change</button>
+            <button type="button" class="small-btn reset" id="resetLogo1">Reset</button>
+          </div>
+          <input type="file" id="logo1File" accept="image/*" class="hidden" />
+        </div>
+
+        <div class="logo-item">
+          <label>Right Logo</label>
+          <div class="logo-row">
+            <div class="logo-preview-box">
+              <img id="logo2Preview" src="" alt="Right logo preview" />
+            </div>
+            <button type="button" class="small-btn" id="changeLogo2">Change</button>
+            <button type="button" class="small-btn reset" id="resetLogo2">Reset</button>
+          </div>
+          <input type="file" id="logo2File" accept="image/*" class="hidden" />
+        </div>
+      </section>
+
+      <div class="saved-note">
+        <div class="check-icon">✓</div>
+        <div>Your settings and official details automatically save locally in your browser.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="preview-header">
+        <div class="preview-title" id="previewTitle">PREVIEW – 4 CARDS PER PAGE (4-PERSON CREW)</div>
+      </div>
+      
+      <div class="preview-wrap">
+        <div id="sheet"></div>
+      </div>
+
+      <div class="preview-tip">TIP: Printed or exported to PDF on standard 8.5" × 11" Letter size paper.</div>
+    </main>
+  </div>
+
+  <!-- Template for Game Cards -->
+  <template id="cardTemplate">
+    <article class="game-card">
+      <div class="logos">
+        <img class="cardLogo1" src="" alt="Left Logo" />
+        <img class="cardLogo2" src="" alt="Right Logo" />
+      </div>
+
+      <div class="game-info">
+        <div class="teams"></div>
+        <div class="game-date"></div>
+        <div class="meta-line kickoff-line"></div>
+        <div class="meta-line location-line"></div>
+      </div>
+
+      <div class="crew-list">
+        <div class="crew-row row-referee">
+          <div class="card-position">Referee:</div>
+          <div class="card-name referee"></div>
+        </div>
+        <div class="crew-row row-lineJudge">
+          <div class="card-position">Line Judge:</div>
+          <div class="card-name lineJudge"></div>
+        </div>
+        <div class="crew-row row-backJudge">
+          <div class="card-position">Back Judge:</div>
+          <div class="card-name backJudge"></div>
+        </div>
+        <div class="crew-row row-fieldJudge">
+          <div class="card-position">Field Judge:</div>
+          <div class="card-name fieldJudge"></div>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const STORAGE_KEY = "flag_football_card_generator_v2";
+
+    // Transparent placeholder SVG image fallback
+    const DEFAULT_LOGO_1 = "img/cffo-logo-trade-mark-orig.png";
+    const DEFAULT_LOGO_2 = "img/CHSAA_new-logo.webp";
+
+    // State object
+    let state = {
+      crewSize: 4,
+      cardTheme: "pink",
+      appearance: "light",
+      homeTeam: "Bulldogs",
+      awayTeam: "Titans",
+      gameDate: "2026-10-18",
+      kickoff: "10:00",
+      location: "Memorial Park Field 1",
+      referee: "Bryan Norfleet",
+      lineJudge: "Line Judge",
+      backJudge: "Back Judge",
+      fieldJudge: "Field Judge",
+      logo1: "",
+      logo2: ""
+    };
+
+    // Load saved state from LocalStorage
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          state = { ...state, ...JSON.parse(saved) };
+        }
+      } catch (e) {
+        console.warn("Unable to load state from localStorage:", e);
+      }
+    }
+
+    // Save state to LocalStorage
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn("Unable to save state to localStorage:", e);
+      }
+    }
+
+    // Apply color theme updates dynamically
+    function updateThemeUI() {
+      document.documentElement.dataset.appearance = state.appearance === "dark" ? "dark" : "light";
+      const toggle = document.getElementById("modeToggle");
+      toggle.textContent = state.appearance === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+      toggle.setAttribute("aria-pressed", String(state.appearance === "dark"));
+      const root = document.documentElement;
+      if (state.cardTheme === "pink") {
+        root.style.setProperty("--grayband", "#ffd1dc");
+        document.getElementById("pinkThemeBtn").classList.add("active");
+        document.getElementById("grayThemeBtn").classList.remove("active");
+      } else {
+        root.style.setProperty("--grayband", "#d8d8d8");
+        document.getElementById("grayThemeBtn").classList.add("active");
+        document.getElementById("pinkThemeBtn").classList.remove("active");
+      }
+    }
+
+    function renderInputs() {
+      document.getElementById("homeTeam").value = state.homeTeam;
+      document.getElementById("awayTeam").value = state.awayTeam;
+      document.getElementById("gameDate").value = state.gameDate;
+      document.getElementById("kickoff").value = state.kickoff;
+      document.getElementById("location").value = state.location;
+
+      document.getElementById("referee").value = state.referee;
+      document.getElementById("lineJudge").value = state.lineJudge;
+      document.getElementById("backJudge").value = state.backJudge;
+      document.getElementById("fieldJudge").value = state.fieldJudge;
+
+      // Crew size buttons state
+      if (state.crewSize === 3) {
+        document.getElementById("crew3Btn").classList.add("active");
+        document.getElementById("crew4Btn").classList.remove("active");
+        document.getElementById("fieldJudge").classList.add("hidden");
+        document.getElementById("fieldJudgeLabel").classList.add("hidden");
+      } else {
+        document.getElementById("crew4Btn").classList.add("active");
+        document.getElementById("crew3Btn").classList.remove("active");
+        document.getElementById("fieldJudge").classList.remove("hidden");
+        document.getElementById("fieldJudgeLabel").classList.remove("hidden");
+      }
+
+      updateThemeUI();
+
+      // Update logo image elements in sidebar
+      document.getElementById("logo1Preview").src = state.logo1 || DEFAULT_LOGO_1;
+      document.getElementById("logo2Preview").src = state.logo2 || DEFAULT_LOGO_2;
+    }
+
+    function renderSheet() {
+      const sheet = document.getElementById("sheet");
+      if (!sheet) return;
+      sheet.innerHTML = "";
+
+      document.getElementById("previewTitle").textContent = `PREVIEW – 4 CARDS PER PAGE (${state.crewSize}-PERSON CREW)`;
+
+      for (let i = 0; i < 4; i++) {
+        const template = document.getElementById("cardTemplate");
+        const clone = template.content.cloneNode(true);
+
+        const cardLogo1 = clone.querySelector(".cardLogo1");
+        const cardLogo2 = clone.querySelector(".cardLogo2");
+        cardLogo1.src = state.logo1 || DEFAULT_LOGO_1;
+        cardLogo2.src = state.logo2 || DEFAULT_LOGO_2;
+
+        const teamsEl = clone.querySelector(".teams");
+        teamsEl.textContent = `${state.homeTeam || "Home"} vs ${state.awayTeam || "Away"}`;
+
+        const dateEl = clone.querySelector(".game-date");
+        if (state.gameDate) {
+          const parts = state.gameDate.split('-');
+          if (parts.length === 3) {
+            const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            dateEl.textContent = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+          } else {
+            dateEl.textContent = state.gameDate;
+          }
+        } else {
+          dateEl.textContent = "";
+        }
+
+        const kickoffLine = clone.querySelector(".kickoff-line");
+        if (state.kickoff) {
+          // Format 24h time to 12h format
+          let formattedTime = state.kickoff;
+          const timeParts = state.kickoff.split(':');
+          if (timeParts.length === 2) {
+            let hours = parseInt(timeParts[0], 10);
+            const minutes = timeParts[1];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            formattedTime = `${hours}:${minutes} ${ampm}`;
+          }
+          kickoffLine.innerHTML = `<span><strong>Kickoff:</strong> ${formattedTime}</span>`;
+        } else {
+          kickoffLine.remove();
+        }
+
+        const locationLine = clone.querySelector(".location-line");
+        if (state.location) {
+          locationLine.innerHTML = `<span><strong>Location:</strong> ${state.location}</span>`;
+        } else {
+          locationLine.remove();
+        }
+
+        clone.querySelector(".referee").textContent = state.referee;
+        clone.querySelector(".lineJudge").textContent = state.lineJudge;
+        clone.querySelector(".backJudge").textContent = state.backJudge;
+        clone.querySelector(".fieldJudge").textContent = state.fieldJudge;
+
+        if (state.crewSize === 3) {
+          const fjRow = clone.querySelector(".row-fieldJudge");
+          if (fjRow) fjRow.style.visibility = "hidden";
+        }
+
+        sheet.appendChild(clone);
+      }
+    }
+
+    function syncStateFromInputs() {
+      state.homeTeam = document.getElementById("homeTeam").value;
+      state.awayTeam = document.getElementById("awayTeam").value;
+      state.gameDate = document.getElementById("gameDate").value;
+      state.kickoff = document.getElementById("kickoff").value;
+      state.location = document.getElementById("location").value;
+
+      state.referee = document.getElementById("referee").value;
+      state.lineJudge = document.getElementById("lineJudge").value;
+      state.backJudge = document.getElementById("backJudge").value;
+      state.fieldJudge = document.getElementById("fieldJudge").value;
+
+      saveState();
+      renderSheet();
+    }
+
+    function setupEventListeners() {
+      document.getElementById("modeToggle").addEventListener("click", () => {
+        state.appearance = state.appearance === "dark" ? "light" : "dark";
+        saveState();
+        updateThemeUI();
+      });
+      // Crew Size Buttons
+      document.getElementById("crew3Btn").addEventListener("click", () => {
+        state.crewSize = 3;
+        saveState();
+        renderInputs();
+        renderSheet();
+      });
+
+      document.getElementById("crew4Btn").addEventListener("click", () => {
+        state.crewSize = 4;
+        saveState();
+        renderInputs();
+        renderSheet();
+      });
+
+      // Band Theme Buttons
+      document.getElementById("pinkThemeBtn").addEventListener("click", () => {
+        state.cardTheme = "pink";
+        saveState();
+        updateThemeUI();
+      });
+
+      document.getElementById("grayThemeBtn").addEventListener("click", () => {
+        state.cardTheme = "gray";
+        saveState();
+        updateThemeUI();
+      });
+
+      // Form Text Inputs
+      const inputs = document.querySelectorAll(".sidebar input[type='text'], .sidebar input[type='date'], .sidebar input[type='time']");
+      inputs.forEach(input => {
+        input.addEventListener("input", syncStateFromInputs);
+      });
+
+      // Clear All Button
+      document.getElementById("clearAll").addEventListener("click", () => {
+        state.homeTeam = "";
+        state.awayTeam = "";
+        state.gameDate = "";
+        state.kickoff = "";
+        state.location = "";
+        state.referee = "";
+        state.lineJudge = "";
+        state.backJudge = "";
+        state.fieldJudge = "";
+        saveState();
+        renderInputs();
+        renderSheet();
+      });
+
+      // Print Button
+      document.getElementById("printBtn").addEventListener("click", () => {
+        window.print();
+      });
+
+      // Download PDF Button
+      document.getElementById("pdfBtn").addEventListener("click", async () => {
+        const { jsPDF } = window.jspdf;
+        const sheet = document.getElementById("sheet");
+
+        try {
+          const canvas = await html2canvas(sheet, { scale: 2, useCORS: true });
+          const imgData = canvas.toDataURL("image/jpeg", 1.0);
+          const pdf = new jsPDF("p", "in", "letter");
+          pdf.addImage(imgData, "JPEG", 0, 0, 8.5, 11);
+          pdf.save("flag-football-game-cards.pdf");
+        } catch (err) {
+          console.error("PDF generation error:", err);
+          window.print();
+        }
+      });
+
+      // Logo File Uploader Triggers
+      document.getElementById("changeLogo1").addEventListener("click", () => {
+        document.getElementById("logo1File").click();
+      });
+
+      document.getElementById("changeLogo2").addEventListener("click", () => {
+        document.getElementById("logo2File").click();
+      });
+
+      document.getElementById("logo1File").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            state.logo1 = evt.target.result;
+            document.getElementById("logo1Preview").src = state.logo1;
+            saveState();
+            renderSheet();
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      document.getElementById("logo2File").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            state.logo2 = evt.target.result;
+            document.getElementById("logo2Preview").src = state.logo2;
+            saveState();
+            renderSheet();
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      document.getElementById("resetLogo1").addEventListener("click", () => {
+        state.logo1 = "";
+        document.getElementById("logo1Preview").src = DEFAULT_LOGO_1;
+        document.getElementById("logo1File").value = "";
+        saveState();
+        renderSheet();
+      });
+
+      document.getElementById("resetLogo2").addEventListener("click", () => {
+        state.logo2 = "";
+        document.getElementById("logo2Preview").src = DEFAULT_LOGO_2;
+        document.getElementById("logo2File").value = "";
+        saveState();
+        renderSheet();
+      });
+    }
+
+    // Initialize application when loaded
+    window.addEventListener("DOMContentLoaded", () => {
+      loadState();
+      renderInputs();
+      renderSheet();
+      setupEventListeners();
+    });
+  </script>
+</body>
+</html>
