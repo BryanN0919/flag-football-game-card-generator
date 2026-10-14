@@ -478,6 +478,22 @@
       color: #0d2880;
     }
 
+    .game-date.blank-date {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .game-date.blank-date::after {
+      content: "";
+      display: inline-block;
+      width: 145px;
+      border-bottom: 1px solid #0d2880;
+      flex: 0 1 145px;
+    }
+
     .meta-line {
       display: flex;
       align-items: center;
@@ -851,12 +867,12 @@
       gameCount: 1,
       sameOfficials: true,
       gameOfficials: [],
-      games: [{homeTeam:"",awayTeam:"",gameDate:currentLocalDate(),kickoff:"",location:""}],
+      games: [{homeTeam:"",awayTeam:"",gameDate:"",kickoff:"",location:""}],
       cardTheme: "pink",
       appearance: "light",
       homeTeam: "",
       awayTeam: "",
-      gameDate: currentLocalDate(),
+      gameDate: "",
       kickoff: "",
       location: "",
       referee: "",
@@ -876,7 +892,7 @@
 
     const emptyOfficials = () => Object.fromEntries(OFFICIAL_NAME_FIELDS.map(key => [key, ""]));
     const OFFICIAL_LABELS = {referee:"Referee",lineJudge:"Line Judge",backJudge:"Back Judge",fieldJudge:"Field Judge",downBox:"Down Box",clockOperator:"Clock Operator"};
-    const emptyGame = () => ({homeTeam:"",awayTeam:"",gameDate:currentLocalDate(),kickoff:"",location:""});
+    const emptyGame = () => ({homeTeam:"",awayTeam:"",gameDate:"",kickoff:"",location:""});
     function ensureGames() {
       if (!Array.isArray(state.games)) state.games = [];
       while (state.games.length < 3) state.games.push(emptyGame());
@@ -901,7 +917,7 @@
           delete preferences.gameDate;
           state = { ...state, ...preferences };
           if (!Array.isArray(preferences.games)) {
-            state.games = [{homeTeam:"",awayTeam:"",gameDate:currentLocalDate(),kickoff:"",location:""}];
+            state.games = [{homeTeam:"",awayTeam:"",gameDate:"",kickoff:"",location:""}];
           }
         }
       } catch(e) { console.warn("Unable to load settings:",e); }
@@ -910,12 +926,12 @@
         game.location = "";
         game.homeTeam = "";
         game.awayTeam = "";
-        game.gameDate = currentLocalDate();
+        game.gameDate = "";
         game.kickoff = "";
       });
       state.homeTeam = "";
       state.awayTeam = "";
-      state.gameDate = currentLocalDate();
+      state.gameDate = "";
       state.kickoff = "";
       OFFICIAL_NAME_FIELDS.forEach(position => state[position] = "");
       state.gameOfficials = Array.from({length:3},emptyOfficials);
@@ -1084,6 +1100,7 @@
         if (homeName) addTeamText(homeName);
 
         const dateEl = clone.querySelector(".game-date");
+        dateEl.classList.toggle("blank-date", !game.gameDate);
         if (game.gameDate) {
           const parts = game.gameDate.split('-');
           if (parts.length === 3) {
@@ -1093,7 +1110,7 @@
             dateEl.textContent = game.gameDate;
           }
         } else {
-          dateEl.textContent = "";
+          dateEl.textContent = "Date:";
         }
 
         const kickoffLine = clone.querySelector(".kickoff-line");
