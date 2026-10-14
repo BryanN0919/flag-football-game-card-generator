@@ -377,7 +377,7 @@
     }
 
     /* Printable Page Layout (8.5" x 11") */
-    #sheet {
+    .sheet {
       width: 8.5in;
       height: 11in;
       box-sizing: border-box;
@@ -385,10 +385,17 @@
       background: #ffffff;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      grid-template-rows: max-content max-content;
+      grid-template-rows: max-content;
       align-content: start;
       gap: 0.2in;
+      margin-bottom: 20px;
+      break-after: page;
     }
+    .sheet:last-child { break-after: auto; margin-bottom: 0; }
+    .sheets { display: flex; flex-direction: column; gap: 20px; }
+    .game-fields { padding: 12px; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; }
+    .game-fields legend { font-weight: 800; padding: 0 6px; color: #853b79; }
+    @media print { .sheets { gap: 0; } .sheet { margin-bottom: 0; } }
 
     /* Individual Printable Card */
     .game-card {
@@ -402,8 +409,20 @@
       box-sizing: border-box;
     }
 
+    /* Preserve original card dimensions. Three standard-crew games
+       (six cards) fit on one page; six-person crews use two games per page. */
+    .sheet.standard-sheet {
+      grid-template-rows: repeat(3, max-content);
+      align-content: start;
+      gap: 0.2in;
+    }
+    .sheet.six-person-sheet {
+      grid-template-rows: repeat(2, max-content);
+      align-content: start;
+      gap: 0.2in;
+    }
+    /* Six-person cards retain their original roomy official rows. */
     .six-person-sheet .logos { height: 1.05in; }
-    /* Six full-width official rows; taller cards grow naturally within the page. */
     .six-person-sheet .crew-list { padding: 0.14in 0.12in; gap: 0.085in; }
     .six-person-sheet .card-position { font-size: 14px; }
     .six-person-sheet .card-name { font-size: 15px; }
@@ -547,12 +566,12 @@
         box-shadow: none !important;
       }
 
-      #sheet {
+      .sheet {
         width: 8.5in !important;
         height: 11in !important;
         margin: 0 !important;
         padding: 0.25in !important;
-        page-break-after: always;
+        break-after: page;
       }
 
       .game-info {
@@ -628,7 +647,7 @@
     :root[data-appearance="dark"] input[type="time"] { background: #382b40; color: #fff0f8; border-color: #69536b; color-scheme: dark; }
     :root[data-appearance="dark"] .preview-tip { color: #c6aac7; }
     /* Keep printable cards and PDF rendering consistent in either mode. */
-    :root[data-appearance="dark"] #sheet,
+    :root[data-appearance="dark"] .sheet,
     :root[data-appearance="dark"] .game-card,
     :root[data-appearance="dark"] .logos { background: #fff; color: #111; }
     @media (max-width: 700px) {
@@ -680,37 +699,21 @@
           <button type="button" class="crew-btn" id="grayThemeBtn">Grey</button>
         </div>
 
-        <div class="field">
-          <label for="homeTeam">Home Team</label>
-          <input type="text" id="homeTeam" value="Bulldogs" placeholder="e.g. Bulldogs" />
+        <label>Number of Games</label>
+        <div class="crew-buttons" id="gameCountButtons">
+          <button type="button" class="crew-btn active" data-games="1">1 GAME</button>
+          <button type="button" class="crew-btn" data-games="2">2 GAMES</button>
+          <button type="button" class="crew-btn" data-games="3">3 GAMES</button>
         </div>
-
-        <div class="field">
-          <label for="awayTeam">Away Team</label>
-          <input type="text" id="awayTeam" value="Titans" placeholder="e.g. Titans" />
-        </div>
-
-        <div class="two-col">
-          <div class="field">
-            <label for="gameDate">Game Date</label>
-            <input type="date" id="gameDate" value="2026-10-18" />
-          </div>
-          <div class="field">
-            <label for="kickoff">Start Time <span class="optional">(Optional)</span></label>
-            <input type="time" id="kickoff" value="10:00" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="location">Game Location <span class="optional">(Optional)</span></label>
-          <input type="text" id="location" value="Memorial Park Field 1" placeholder="e.g. Main Stadium" />
-        </div>
+        <div id="gameFields"></div>
       </section>
 
       <!-- Section 2: Officials Input Fields -->
       <section class="section">
         <div class="section-title">2. OFFICIALS</div>
 
+        <label class="officials-toggle-label"><input type="checkbox" id="sameOfficials" checked /> Same officials for all games</label>
+        <div id="sharedOfficials">
         <div class="official-grid">
           <div class="position-label">Referee</div>
           <input type="text" id="referee" value="" placeholder="Referee Name" />
@@ -730,6 +733,8 @@
           <div class="position-label" id="clockOperatorLabel">Clock Operator</div>
           <input type="text" id="clockOperator" value="" placeholder="Clock Operator Name" />
         </div>
+        </div>
+        <div id="perGameOfficials"></div>
       </section>
 
       <!-- Section 3: Association Logo File Uploader -->
@@ -763,17 +768,17 @@
 
       <div class="saved-note">
         <div class="check-icon">✓</div>
-        <div>Your settings and official details automatically save locally in your browser.</div>
+        <div>Your appearance, logos, teams, dates and start times save locally. Official names and game locations start blank on every visit.</div>
       </div>
     </aside>
 
     <main class="main">
       <div class="preview-header">
-        <div class="preview-title" id="previewTitle">PREVIEW – 4 CARDS PER PAGE (4-PERSON CREW)</div>
+        <div class="preview-title" id="previewTitle">PREVIEW – 2 CARDS PER GAME (4-PERSON CREW)</div>
       </div>
       
       <div class="preview-wrap">
-        <div id="sheet"></div>
+        <div id="sheets" class="sheets"></div>
       </div>
 
       <div class="preview-tip">TIP: Printed or exported to PDF on standard 8.5" × 11" Letter size paper.</div>
@@ -831,16 +836,29 @@
     const DEFAULT_LOGO_1 = "img/cffo-logo-trade-mark-orig.png";
     const DEFAULT_LOGO_2 = "img/CHSAA_new-logo.webp";
 
+    // Use the visitor's local calendar date (not UTC) for date inputs.
+    const currentLocalDate = () => {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     // State object
     let state = {
       crewSize: 4,
+      gameCount: 1,
+      sameOfficials: true,
+      gameOfficials: [],
+      games: [{homeTeam:"",awayTeam:"",gameDate:currentLocalDate(),kickoff:"",location:""}],
       cardTheme: "pink",
       appearance: "light",
-      homeTeam: "Bulldogs",
-      awayTeam: "Titans",
-      gameDate: "2026-10-18",
-      kickoff: "10:00",
-      location: "Memorial Park Field 1",
+      homeTeam: "",
+      awayTeam: "",
+      gameDate: currentLocalDate(),
+      kickoff: "",
+      location: "",
       referee: "",
       lineJudge: "",
       backJudge: "",
@@ -851,28 +869,131 @@
       logo2: ""
     };
 
-    // Load saved state from LocalStorage
+    // Official names are session-only and always start blank on a new page load.
+    const OFFICIAL_NAME_FIELDS = [
+      "referee", "lineJudge", "backJudge", "fieldJudge", "downBox", "clockOperator"
+    ];
+
+    const emptyOfficials = () => Object.fromEntries(OFFICIAL_NAME_FIELDS.map(key => [key, ""]));
+    const OFFICIAL_LABELS = {referee:"Referee",lineJudge:"Line Judge",backJudge:"Back Judge",fieldJudge:"Field Judge",downBox:"Down Box",clockOperator:"Clock Operator"};
+    const emptyGame = () => ({homeTeam:"",awayTeam:"",gameDate:currentLocalDate(),kickoff:"",location:""});
+    function ensureGames() {
+      if (!Array.isArray(state.games)) state.games = [];
+      while (state.games.length < 3) state.games.push(emptyGame());
+      state.games = state.games.slice(0,3);
+      if (!Array.isArray(state.gameOfficials)) state.gameOfficials = [];
+      while (state.gameOfficials.length < 3) state.gameOfficials.push(emptyOfficials());
+      state.gameOfficials = state.gameOfficials.slice(0,3);
+      state.gameCount = Math.max(1,Math.min(3,Number(state.gameCount)||1));
+    }
+    // Never restore official names or locations; retain other preferences.
     function loadState() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-          state = { ...state, ...JSON.parse(saved) };
-          // Remove old default text while preserving names officials entered.
-          ["referee", "lineJudge", "backJudge", "fieldJudge", "downBox", "clockOperator"].forEach(position => {
-            if (["Name", "Insert Name Here"].includes((state[position] || "").trim())) state[position] = "";
-          });
+          const preferences = JSON.parse(saved);
+          OFFICIAL_NAME_FIELDS.forEach(position => delete preferences[position]);
+          delete preferences.gameOfficials;
+          delete preferences.location;
+          delete preferences.homeTeam;
+          delete preferences.awayTeam;
+          delete preferences.kickoff;
+          delete preferences.gameDate;
+          state = { ...state, ...preferences };
+          if (!Array.isArray(preferences.games)) {
+            state.games = [{homeTeam:"",awayTeam:"",gameDate:currentLocalDate(),kickoff:"",location:""}];
+          }
         }
-      } catch (e) {
-        console.warn("Unable to load state from localStorage:", e);
+      } catch(e) { console.warn("Unable to load settings:",e); }
+      ensureGames();
+      state.games.forEach(game => {
+        game.location = "";
+        game.homeTeam = "";
+        game.awayTeam = "";
+        game.gameDate = currentLocalDate();
+        game.kickoff = "";
+      });
+      state.homeTeam = "";
+      state.awayTeam = "";
+      state.gameDate = currentLocalDate();
+      state.kickoff = "";
+      OFFICIAL_NAME_FIELDS.forEach(position => state[position] = "");
+      state.gameOfficials = Array.from({length:3},emptyOfficials);
+    }
+    function saveState() {
+      try {
+        const preferences = {...state, games: state.games.map(game => ({...game, location:"", homeTeam:"", awayTeam:"", gameDate:"", kickoff:""}))};
+        OFFICIAL_NAME_FIELDS.forEach(position => delete preferences[position]);
+        delete preferences.gameOfficials;
+        delete preferences.location;
+        delete preferences.homeTeam;
+        delete preferences.awayTeam;
+        delete preferences.gameDate;
+        delete preferences.kickoff;
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(preferences));
+      } catch(e) { console.warn("Unable to save settings:",e); }
+    }
+    function renderGameInputs() {
+      ensureGames();
+      document.querySelectorAll("[data-games]").forEach(btn => btn.classList.toggle("active", Number(btn.dataset.games) === state.gameCount));
+      const container = document.getElementById("gameFields");
+      container.replaceChildren();
+      const fields = [
+        ["awayTeam","Visitor Team","text","e.g. Titans"],
+        ["homeTeam","Home Team","text","e.g. Bulldogs"],
+        ["gameDate","Game Date","date",""],
+        ["kickoff","Start Time (Optional)","time",""],
+        ["location","Game Location (Optional)","text","e.g. Main Stadium"]
+      ];
+      for(let i=0;i<state.gameCount;i++) {
+        const group=document.createElement("fieldset"); group.className="game-fields";
+        const legend=document.createElement("legend"); legend.textContent=`Game ${i+1}`; group.appendChild(legend);
+        for(const [key,labelText,type,placeholder] of fields) {
+          const field=document.createElement("div");field.className="field";
+          const label=document.createElement("label");label.htmlFor=`game-${i}-${key}`;label.textContent=labelText;
+          const input=document.createElement("input");input.type=type;input.id=label.htmlFor;input.dataset.gameIndex=String(i);input.dataset.gameField=key;input.value=state.games[i][key]||"";
+          if(placeholder)input.placeholder=placeholder;
+          field.append(label,input);group.appendChild(field);
+        }
+        container.appendChild(group);
       }
     }
 
-    // Save state to LocalStorage
-    function saveState() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch (e) {
-        console.warn("Unable to save state to localStorage:", e);
+    function renderOfficialInputs() {
+      const shared = state.sameOfficials || state.gameCount === 1;
+      document.getElementById("sameOfficials").checked = shared;
+      document.getElementById("sameOfficials").disabled = state.gameCount === 1;
+      document.getElementById("sharedOfficials").classList.toggle("hidden", !shared);
+      const container = document.getElementById("perGameOfficials");
+      container.replaceChildren();
+      if (shared) return;
+      const positions = OFFICIAL_NAME_FIELDS.filter(key =>
+        key !== "fieldJudge" || state.crewSize >= 4).filter(key =>
+        !["downBox","clockOperator"].includes(key) || state.crewSize === 6);
+      for (let i=0; i<state.gameCount; i++) {
+        const group=document.createElement("fieldset");
+        group.className="game-fields";
+        const legend=document.createElement("legend");
+        legend.textContent=`Game ${i+1} Officials`;
+        group.appendChild(legend);
+        const grid=document.createElement("div");
+        grid.className="official-grid";
+        for (const key of positions) {
+          const label=document.createElement("label");
+          label.className="position-label";
+          label.htmlFor=`official-${i}-${key}`;
+          label.textContent=OFFICIAL_LABELS[key];
+          const input=document.createElement("input");
+          input.type="text";
+          input.id=label.htmlFor;
+          input.placeholder=`${OFFICIAL_LABELS[key]} Name`;
+          input.dataset.officialGame=String(i);
+          input.dataset.officialField=key;
+          input.value=state.gameOfficials[i][key] || "";
+          grid.append(label,input);
+        }
+        group.appendChild(grid);
+        container.appendChild(group);
       }
     }
 
@@ -895,12 +1016,8 @@
     }
 
     function renderInputs() {
-      document.getElementById("homeTeam").value = state.homeTeam;
-      document.getElementById("awayTeam").value = state.awayTeam;
-      document.getElementById("gameDate").value = state.gameDate;
-      document.getElementById("kickoff").value = state.kickoff;
-      document.getElementById("location").value = state.location;
-
+      renderGameInputs();
+      renderOfficialInputs();
       document.getElementById("referee").value = state.referee;
       document.getElementById("lineJudge").value = state.lineJudge;
       document.getElementById("backJudge").value = state.backJudge;
@@ -927,14 +1044,23 @@
     }
 
     function renderSheet() {
-      const sheet = document.getElementById("sheet");
-      if (!sheet) return;
-      sheet.innerHTML = "";
-      sheet.classList.toggle("six-person-sheet", state.crewSize === 6);
-
-      document.getElementById("previewTitle").textContent = `PREVIEW – 4 CARDS PER PAGE (${state.crewSize}-PERSON CREW)`;
-
-      for (let i = 0; i < 4; i++) {
+      const sheets = document.getElementById("sheets");
+      if (!sheets) return;
+      sheets.replaceChildren();
+      const gamesPerPage = state.crewSize === 6 ? 2 : 3;
+      const pageCount = Math.ceil(state.gameCount / gamesPerPage);
+      document.getElementById("previewTitle").textContent = `PREVIEW – 2 CARDS PER GAME (${state.gameCount} ${state.gameCount === 1 ? "GAME" : "GAMES"}, ${state.crewSize}-PERSON CREW, ${pageCount} ${pageCount === 1 ? "PAGE" : "PAGES"})`;
+      let sheet;
+      for (let gameIndex=0;gameIndex<state.gameCount;gameIndex++) {
+        const game=state.games[gameIndex];
+        if (gameIndex % gamesPerPage === 0) {
+          sheet=document.createElement("div");
+          sheet.className="sheet";
+          sheet.classList.toggle("six-person-sheet",state.crewSize===6);
+          sheet.classList.toggle("standard-sheet",state.crewSize!==6);
+          sheets.appendChild(sheet);
+        }
+        for (let i=0;i<2;i++) {
         const template = document.getElementById("cardTemplate");
         const clone = template.content.cloneNode(true);
 
@@ -951,30 +1077,30 @@
           if (className) span.className = className;
           teamsEl.appendChild(span);
         };
-        addTeamText(state.awayTeam || "Visitor");
-        addTeamText(" (V)", "team-marker");
-        addTeamText(" vs ");
-        addTeamText(state.homeTeam || "Home");
-        addTeamText(" (H)", "team-marker");
+        const visitorName = (game.awayTeam || "").trim();
+        const homeName = (game.homeTeam || "").trim();
+        if (visitorName) addTeamText(visitorName);
+        addTeamText(visitorName || homeName ? " vs " : "vs");
+        if (homeName) addTeamText(homeName);
 
         const dateEl = clone.querySelector(".game-date");
-        if (state.gameDate) {
-          const parts = state.gameDate.split('-');
+        if (game.gameDate) {
+          const parts = game.gameDate.split('-');
           if (parts.length === 3) {
             const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
             dateEl.textContent = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
           } else {
-            dateEl.textContent = state.gameDate;
+            dateEl.textContent = game.gameDate;
           }
         } else {
           dateEl.textContent = "";
         }
 
         const kickoffLine = clone.querySelector(".kickoff-line");
-        if (state.kickoff) {
+        if (game.kickoff) {
           // Format 24h time to 12h format
-          let formattedTime = state.kickoff;
-          const timeParts = state.kickoff.split(':');
+          let formattedTime = game.kickoff;
+          const timeParts = game.kickoff.split(':');
           if (timeParts.length === 2) {
             let hours = parseInt(timeParts[0], 10);
             const minutes = timeParts[1];
@@ -988,18 +1114,19 @@
         }
 
         const locationLine = clone.querySelector(".location-line");
-        if (state.location) {
-          locationLine.innerHTML = `<span><strong>Location:</strong> ${state.location}</span>`;
+        if (game.location) {
+          locationLine.innerHTML = `<span><strong>Location:</strong> ${game.location}</span>`;
         } else {
           locationLine.remove();
         }
 
-        clone.querySelector(".referee").textContent = ["Insert Name Here", "Name"].includes((state.referee || "").trim()) ? "" : state.referee;
-        clone.querySelector(".lineJudge").textContent = ["Insert Name Here", "Name"].includes((state.lineJudge || "").trim()) ? "" : state.lineJudge;
-        clone.querySelector(".backJudge").textContent = ["Insert Name Here", "Name"].includes((state.backJudge || "").trim()) ? "" : state.backJudge;
-        clone.querySelector(".fieldJudge").textContent = ["Insert Name Here", "Name"].includes((state.fieldJudge || "").trim()) ? "" : state.fieldJudge;
-        clone.querySelector(".downBox").textContent = ["Insert Name Here", "Name"].includes((state.downBox || "").trim()) ? "" : state.downBox;
-        clone.querySelector(".clockOperator").textContent = ["Insert Name Here", "Name"].includes((state.clockOperator || "").trim()) ? "" : state.clockOperator;
+        const officials = (state.sameOfficials || state.gameCount === 1) ? state : state.gameOfficials[gameIndex];
+        clone.querySelector(".referee").textContent = ["Insert Name Here", "Name"].includes((officials.referee || "").trim()) ? "" : officials.referee;
+        clone.querySelector(".lineJudge").textContent = ["Insert Name Here", "Name"].includes((officials.lineJudge || "").trim()) ? "" : officials.lineJudge;
+        clone.querySelector(".backJudge").textContent = ["Insert Name Here", "Name"].includes((officials.backJudge || "").trim()) ? "" : officials.backJudge;
+        clone.querySelector(".fieldJudge").textContent = ["Insert Name Here", "Name"].includes((officials.fieldJudge || "").trim()) ? "" : officials.fieldJudge;
+        clone.querySelector(".downBox").textContent = ["Insert Name Here", "Name"].includes((officials.downBox || "").trim()) ? "" : officials.downBox;
+        clone.querySelector(".clockOperator").textContent = ["Insert Name Here", "Name"].includes((officials.clockOperator || "").trim()) ? "" : officials.clockOperator;
 
         if (state.crewSize === 3) {
           clone.querySelector(".row-fieldJudge").remove();
@@ -1010,16 +1137,17 @@
         }
 
         sheet.appendChild(clone);
+        }
       }
     }
 
     function syncStateFromInputs() {
-      state.homeTeam = document.getElementById("homeTeam").value;
-      state.awayTeam = document.getElementById("awayTeam").value;
-      state.gameDate = document.getElementById("gameDate").value;
-      state.kickoff = document.getElementById("kickoff").value;
-      state.location = document.getElementById("location").value;
-
+      document.querySelectorAll("[data-game-field]").forEach(input => {
+        state.games[Number(input.dataset.gameIndex)][input.dataset.gameField]=input.value;
+      });
+      document.querySelectorAll("[data-official-field]").forEach(input => {
+        state.gameOfficials[Number(input.dataset.officialGame)][input.dataset.officialField] = input.value;
+      });
       state.referee = document.getElementById("referee").value;
       state.lineJudge = document.getElementById("lineJudge").value;
       state.backJudge = document.getElementById("backJudge").value;
@@ -1059,6 +1187,18 @@
         renderSheet();
       });
 
+      document.querySelectorAll("[data-games]").forEach(btn => btn.addEventListener("click", () => {
+        state.gameCount=Number(btn.dataset.games);
+        saveState();renderGameInputs();renderOfficialInputs();renderSheet();
+      }));
+
+      document.getElementById("sameOfficials").addEventListener("change", event => {
+        state.sameOfficials = event.target.checked;
+        renderOfficialInputs();
+        saveState();
+        renderSheet();
+      });
+
       // Band Theme Buttons
       document.getElementById("pinkThemeBtn").addEventListener("click", () => {
         state.cardTheme = "pink";
@@ -1073,18 +1213,14 @@
       });
 
       // Form Text Inputs
-      const inputs = document.querySelectorAll(".sidebar input[type='text'], .sidebar input[type='date'], .sidebar input[type='time']");
-      inputs.forEach(input => {
-        input.addEventListener("input", syncStateFromInputs);
+      document.querySelector(".sidebar").addEventListener("input", event => {
+        if(event.target.matches("input[type=text],input[type=date],input[type=time]")) syncStateFromInputs();
       });
 
       // Clear All Button
       document.getElementById("clearAll").addEventListener("click", () => {
-        state.homeTeam = "";
-        state.awayTeam = "";
-        state.gameDate = "";
-        state.kickoff = "";
-        state.location = "";
+        state.games=Array.from({length:3},emptyGame);
+        state.gameOfficials=Array.from({length:3},emptyOfficials);
         state.referee = "";
         state.lineJudge = "";
         state.backJudge = "";
@@ -1104,13 +1240,15 @@
       // Download PDF Button
       document.getElementById("pdfBtn").addEventListener("click", async () => {
         const { jsPDF } = window.jspdf;
-        const sheet = document.getElementById("sheet");
+        const pages = [...document.querySelectorAll(".sheet")];
 
         try {
-          const canvas = await html2canvas(sheet, { scale: 2, useCORS: true });
-          const imgData = canvas.toDataURL("image/jpeg", 1.0);
           const pdf = new jsPDF("p", "in", "letter");
-          pdf.addImage(imgData, "JPEG", 0, 0, 8.5, 11);
+          for (let i=0;i<pages.length;i++) {
+            if(i>0) pdf.addPage();
+            const canvas=await html2canvas(pages[i],{scale:2,useCORS:true});
+            pdf.addImage(canvas.toDataURL("image/jpeg",1.0),"JPEG",0,0,8.5,11);
+          }
           // Build the PDF filename from the selected game date and teams.
           const safeFilenamePart = (value, fallback) =>
             (value || "").trim()
@@ -1118,11 +1256,11 @@
               .replace(/\s+/g, "-")
               .replace(/-+/g, "-")
               .replace(/^-|-$/g, "") || fallback;
-          const gameDate = /^\d{4}-\d{2}-\d{2}$/.test(state.gameDate || "")
-            ? state.gameDate : "undated";
-          const homeTeam = safeFilenamePart(state.homeTeam, "Home");
-          const awayTeam = safeFilenamePart(state.awayTeam, "Away");
-          pdf.save(`${gameDate}-${homeTeam}-${awayTeam}-ff-game-card.pdf`);
+          const firstGame=state.games[0];
+          const gameDate = /^\d{4}-\d{2}-\d{2}$/.test(firstGame.gameDate || "") ? firstGame.gameDate : "undated";
+          const homeTeam=safeFilenamePart(firstGame.homeTeam,"Home");
+          const awayTeam=safeFilenamePart(firstGame.awayTeam,"Away");
+          pdf.save(`${gameDate}-${homeTeam}-${awayTeam}${state.gameCount>1?`-${state.gameCount}-games`:""}-ff-game-card.pdf`);
         } catch (err) {
           console.error("PDF generation error:", err);
           window.print();
