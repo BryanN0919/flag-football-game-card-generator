@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Flag Football Game Card Generator</title>
-  <meta name="description" content="Create printable flag football officials game cards for 3- and 4-person crews." />
+  <meta name="description" content="Create printable flag football officials game cards for 3-, 4-, and 6-person crews." />
 
   <!-- External libraries for rendering HTML to Canvas & PDF generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -173,10 +173,12 @@
 
     .crew-buttons {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
       margin-bottom: 14px;
     }
+
+    .theme-buttons { grid-template-columns: repeat(2, 1fr); }
 
     .crew-btn {
       border: 1px solid var(--line);
@@ -400,6 +402,12 @@
       box-sizing: border-box;
     }
 
+    .six-person-sheet .logos { height: 1.05in; }
+    /* Six full-width official rows; taller cards grow naturally within the page. */
+    .six-person-sheet .crew-list { padding: 0.14in 0.12in; gap: 0.085in; }
+    .six-person-sheet .card-position { font-size: 14px; }
+    .six-person-sheet .card-name { font-size: 15px; }
+
     .logos {
       height: 1.25in;
       display: flex;
@@ -437,6 +445,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
       color: #000;
+    }
+
+    .teams .team-marker {
+      font-weight: 400;
     }
 
     .game-date {
@@ -659,10 +671,11 @@
         <div class="crew-buttons">
           <button type="button" class="crew-btn" id="crew3Btn" data-size="3">3-PERSON</button>
           <button type="button" class="crew-btn active" id="crew4Btn" data-size="4">4-PERSON</button>
+          <button type="button" class="crew-btn" id="crew6Btn" data-size="6">6-PERSON</button>
         </div>
 
         <label>Card Band Color</label>
-        <div class="crew-buttons">
+        <div class="crew-buttons theme-buttons">
           <button type="button" class="crew-btn active" id="pinkThemeBtn">Light Pink</button>
           <button type="button" class="crew-btn" id="grayThemeBtn">Grey</button>
         </div>
@@ -683,7 +696,7 @@
             <input type="date" id="gameDate" value="2026-10-18" />
           </div>
           <div class="field">
-            <label for="kickoff">Kickoff Time <span class="optional">(Optional)</span></label>
+            <label for="kickoff">Start Time <span class="optional">(Optional)</span></label>
             <input type="time" id="kickoff" value="10:00" />
           </div>
         </div>
@@ -700,16 +713,22 @@
 
         <div class="official-grid">
           <div class="position-label">Referee</div>
-          <input type="text" id="referee" value="Bryan Norfleet" placeholder="Referee Name" />
+          <input type="text" id="referee" value="" placeholder="Referee Name" />
 
           <div class="position-label">Line Judge</div>
-          <input type="text" id="lineJudge" value="Line Judge" placeholder="Line Judge Name" />
+          <input type="text" id="lineJudge" value="" placeholder="Line Judge Name" />
 
           <div class="position-label">Back Judge</div>
-          <input type="text" id="backJudge" value="Back Judge" placeholder="Back Judge Name" />
+          <input type="text" id="backJudge" value="" placeholder="Back Judge Name" />
 
           <div class="position-label" id="fieldJudgeLabel">Field Judge</div>
-          <input type="text" id="fieldJudge" value="Field Judge" placeholder="Field Judge Name" />
+          <input type="text" id="fieldJudge" value="" placeholder="Field Judge Name" />
+
+          <div class="position-label" id="downBoxLabel">Down Box</div>
+          <input type="text" id="downBox" value="" placeholder="Down Box Name" />
+
+          <div class="position-label" id="clockOperatorLabel">Clock Operator</div>
+          <input type="text" id="clockOperator" value="" placeholder="Clock Operator Name" />
         </div>
       </section>
 
@@ -793,6 +812,14 @@
           <div class="card-position">Field Judge:</div>
           <div class="card-name fieldJudge"></div>
         </div>
+        <div class="crew-row row-downBox">
+            <div class="card-position">Down Box:</div>
+            <div class="card-name downBox"></div>
+          </div>
+          <div class="crew-row row-clockOperator">
+            <div class="card-position">Clock Operator:</div>
+            <div class="card-name clockOperator"></div>
+        </div>
       </div>
     </article>
   </template>
@@ -814,10 +841,12 @@
       gameDate: "2026-10-18",
       kickoff: "10:00",
       location: "Memorial Park Field 1",
-      referee: "Bryan Norfleet",
-      lineJudge: "Line Judge",
-      backJudge: "Back Judge",
-      fieldJudge: "Field Judge",
+      referee: "",
+      lineJudge: "",
+      backJudge: "",
+      fieldJudge: "",
+      downBox: "",
+      clockOperator: "",
       logo1: "",
       logo2: ""
     };
@@ -828,6 +857,10 @@
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           state = { ...state, ...JSON.parse(saved) };
+          // Remove old default text while preserving names officials entered.
+          ["referee", "lineJudge", "backJudge", "fieldJudge", "downBox", "clockOperator"].forEach(position => {
+            if (["Name", "Insert Name Here"].includes((state[position] || "").trim())) state[position] = "";
+          });
         }
       } catch (e) {
         console.warn("Unable to load state from localStorage:", e);
@@ -872,19 +905,19 @@
       document.getElementById("lineJudge").value = state.lineJudge;
       document.getElementById("backJudge").value = state.backJudge;
       document.getElementById("fieldJudge").value = state.fieldJudge;
+      document.getElementById("downBox").value = state.downBox;
+      document.getElementById("clockOperator").value = state.clockOperator;
 
-      // Crew size buttons state
-      if (state.crewSize === 3) {
-        document.getElementById("crew3Btn").classList.add("active");
-        document.getElementById("crew4Btn").classList.remove("active");
-        document.getElementById("fieldJudge").classList.add("hidden");
-        document.getElementById("fieldJudgeLabel").classList.add("hidden");
-      } else {
-        document.getElementById("crew4Btn").classList.add("active");
-        document.getElementById("crew3Btn").classList.remove("active");
-        document.getElementById("fieldJudge").classList.remove("hidden");
-        document.getElementById("fieldJudgeLabel").classList.remove("hidden");
-      }
+      // Show only positions relevant to the selected crew size.
+      [3, 4, 6].forEach(size => {
+        document.getElementById(`crew${size}Btn`).classList.toggle("active", state.crewSize === size);
+      });
+      const showFieldJudge = state.crewSize >= 4;
+      const showAuxiliary = state.crewSize === 6;
+      ["fieldJudge", "fieldJudgeLabel"].forEach(id =>
+        document.getElementById(id).classList.toggle("hidden", !showFieldJudge));
+      ["downBox", "downBoxLabel", "clockOperator", "clockOperatorLabel"].forEach(id =>
+        document.getElementById(id).classList.toggle("hidden", !showAuxiliary));
 
       updateThemeUI();
 
@@ -897,6 +930,7 @@
       const sheet = document.getElementById("sheet");
       if (!sheet) return;
       sheet.innerHTML = "";
+      sheet.classList.toggle("six-person-sheet", state.crewSize === 6);
 
       document.getElementById("previewTitle").textContent = `PREVIEW – 4 CARDS PER PAGE (${state.crewSize}-PERSON CREW)`;
 
@@ -910,7 +944,18 @@
         cardLogo2.src = state.logo2 || DEFAULT_LOGO_2;
 
         const teamsEl = clone.querySelector(".teams");
-        teamsEl.textContent = `${state.homeTeam || "Home"} vs ${state.awayTeam || "Away"}`;
+        teamsEl.replaceChildren();
+        const addTeamText = (value, className) => {
+          const span = document.createElement("span");
+          span.textContent = value;
+          if (className) span.className = className;
+          teamsEl.appendChild(span);
+        };
+        addTeamText(state.awayTeam || "Visitor");
+        addTeamText(" (V)", "team-marker");
+        addTeamText(" vs ");
+        addTeamText(state.homeTeam || "Home");
+        addTeamText(" (H)", "team-marker");
 
         const dateEl = clone.querySelector(".game-date");
         if (state.gameDate) {
@@ -937,7 +982,7 @@
             hours = hours % 12 || 12;
             formattedTime = `${hours}:${minutes} ${ampm}`;
           }
-          kickoffLine.innerHTML = `<span><strong>Kickoff:</strong> ${formattedTime}</span>`;
+          kickoffLine.innerHTML = `<span><strong>Start Time:</strong> ${formattedTime}</span>`;
         } else {
           kickoffLine.remove();
         }
@@ -949,14 +994,19 @@
           locationLine.remove();
         }
 
-        clone.querySelector(".referee").textContent = state.referee;
-        clone.querySelector(".lineJudge").textContent = state.lineJudge;
-        clone.querySelector(".backJudge").textContent = state.backJudge;
-        clone.querySelector(".fieldJudge").textContent = state.fieldJudge;
+        clone.querySelector(".referee").textContent = ["Insert Name Here", "Name"].includes((state.referee || "").trim()) ? "" : state.referee;
+        clone.querySelector(".lineJudge").textContent = ["Insert Name Here", "Name"].includes((state.lineJudge || "").trim()) ? "" : state.lineJudge;
+        clone.querySelector(".backJudge").textContent = ["Insert Name Here", "Name"].includes((state.backJudge || "").trim()) ? "" : state.backJudge;
+        clone.querySelector(".fieldJudge").textContent = ["Insert Name Here", "Name"].includes((state.fieldJudge || "").trim()) ? "" : state.fieldJudge;
+        clone.querySelector(".downBox").textContent = ["Insert Name Here", "Name"].includes((state.downBox || "").trim()) ? "" : state.downBox;
+        clone.querySelector(".clockOperator").textContent = ["Insert Name Here", "Name"].includes((state.clockOperator || "").trim()) ? "" : state.clockOperator;
 
         if (state.crewSize === 3) {
-          const fjRow = clone.querySelector(".row-fieldJudge");
-          if (fjRow) fjRow.style.visibility = "hidden";
+          clone.querySelector(".row-fieldJudge").remove();
+        }
+        if (state.crewSize !== 6) {
+          clone.querySelector(".row-downBox").remove();
+          clone.querySelector(".row-clockOperator").remove();
         }
 
         sheet.appendChild(clone);
@@ -974,6 +1024,8 @@
       state.lineJudge = document.getElementById("lineJudge").value;
       state.backJudge = document.getElementById("backJudge").value;
       state.fieldJudge = document.getElementById("fieldJudge").value;
+      state.downBox = document.getElementById("downBox").value;
+      state.clockOperator = document.getElementById("clockOperator").value;
 
       saveState();
       renderSheet();
@@ -995,6 +1047,13 @@
 
       document.getElementById("crew4Btn").addEventListener("click", () => {
         state.crewSize = 4;
+        saveState();
+        renderInputs();
+        renderSheet();
+      });
+
+      document.getElementById("crew6Btn").addEventListener("click", () => {
+        state.crewSize = 6;
         saveState();
         renderInputs();
         renderSheet();
@@ -1030,6 +1089,8 @@
         state.lineJudge = "";
         state.backJudge = "";
         state.fieldJudge = "";
+        state.downBox = "";
+        state.clockOperator = "";
         saveState();
         renderInputs();
         renderSheet();
