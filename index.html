@@ -94,6 +94,11 @@
       gap: 10px;
     }
 
+    .top-actions { align-items: flex-start; }
+    .output-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .output-buttons { display: flex; gap: 10px; }
+    .output-actions .duplex-toggle { color: #fff; justify-content: center; }
+
     .top-actions button {
       min-width: 100px;
       border-radius: 6px;
@@ -111,6 +116,20 @@
       justify-content: center;
       gap: 6px;
     }
+
+    /* Compact header controls; keep the sportsmanship option beneath output buttons. */
+    .top-actions { gap: 7px; align-items: flex-start; }
+    .top-actions button {
+      min-width: 0;
+      height: 32px;
+      padding: 0 10px;
+      font-size: 11px;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .output-buttons { gap: 7px; }
+    .output-actions { gap: 6px; }
+    .output-actions .duplex-toggle { font-size: 11px; }
 
     .top-actions button:hover {
       background: rgba(255,255,255,0.2);
@@ -713,9 +732,13 @@
     <div class="top-actions">
       <button type="button" id="modeToggle" aria-pressed="false" title="Switch between light and dark appearance">🌙 Dark Mode</button>
       <button id="clearAll">Clear All</button>
-      <label class="duplex-toggle"><input type="checkbox" id="printSportsmanship" checked> Print sportsmanship code on backs</label>
-      <button class="print" id="printBtn">🖨️ Print</button>
-      <button class="pdf" id="pdfBtn">⬇️ Download PDF</button>
+      <div class="output-actions">
+        <div class="output-buttons">
+          <button class="print" id="printBtn">🖨️ Print</button>
+          <button class="pdf" id="pdfBtn">⬇️ Download PDF</button>
+        </div>
+        <label class="duplex-toggle"><input type="checkbox" id="printSportsmanship" checked> Print sportsmanship code on backs</label>
+      </div>
     </div>
   </header>
 
