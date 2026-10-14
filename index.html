@@ -397,6 +397,28 @@
     .game-fields legend { font-weight: 800; padding: 0 6px; color: #853b79; }
     @media print { .sheets { gap: 0; } .sheet { margin-bottom: 0; } }
 
+    /* Back-of-card sportsmanship text, placed in identical grid positions to fronts. */
+    .sportsmanship-card {
+      border: 2px solid #111;
+      border-radius: 4px;
+      box-sizing: border-box;
+      background: white;
+      color: #111;
+      padding: 0.18in 0.18in;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: stretch;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    .sportsmanship-card h3 { font-size: 10px; text-align: center; margin: 0 0 9px; }
+    .sportsmanship-card p { font-size: 9px; line-height: 1.4; font-weight: 600; margin: 0 0 8px; }
+    .sportsmanship-card .rating { font-size: 9px; font-weight: 700; text-align: center; margin: 0; }
+    .duplex-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+    .duplex-toggle input { accent-color: #853b79; }
+    @media print { .duplex-toggle { display: none !important; } }
+
     /* Individual Printable Card */
     .game-card {
       border: 2px solid #111;
@@ -691,6 +713,7 @@
     <div class="top-actions">
       <button type="button" id="modeToggle" aria-pressed="false" title="Switch between light and dark appearance">🌙 Dark Mode</button>
       <button id="clearAll">Clear All</button>
+      <label class="duplex-toggle"><input type="checkbox" id="printSportsmanship" checked> Print sportsmanship code on backs</label>
       <button class="print" id="printBtn">🖨️ Print</button>
       <button class="pdf" id="pdfBtn">⬇️ Download PDF</button>
     </div>
@@ -784,7 +807,7 @@
 
       <div class="saved-note">
         <div class="check-icon">✓</div>
-        <div>Your appearance, logos, teams, dates and start times save locally. Official names and game locations start blank on every visit.</div>
+        <div>Your appearance and logos save locally. Game details and official names start blank on every visit.</div>
       </div>
     </aside>
 
@@ -1065,7 +1088,7 @@
       sheets.replaceChildren();
       const gamesPerPage = state.crewSize === 6 ? 2 : 3;
       const pageCount = Math.ceil(state.gameCount / gamesPerPage);
-      document.getElementById("previewTitle").textContent = `PREVIEW – 2 CARDS PER GAME (${state.gameCount} ${state.gameCount === 1 ? "GAME" : "GAMES"}, ${state.crewSize}-PERSON CREW, ${pageCount} ${pageCount === 1 ? "PAGE" : "PAGES"})`;
+      document.getElementById("previewTitle").textContent = `PREVIEW – 2 CARDS PER GAME (${state.gameCount} ${state.gameCount === 1 ? "GAME" : "GAMES"}, ${state.crewSize}-PERSON CREW, ${pageCount} ${pageCount === 1 ? "FRONT PAGE" : "FRONT PAGES"}${document.getElementById("printSportsmanship").checked ? " + MATCHING BACKS" : ""})`;
       let sheet;
       for (let gameIndex=0;gameIndex<state.gameCount;gameIndex++) {
         const game=state.games[gameIndex];
@@ -1155,6 +1178,27 @@
 
         sheet.appendChild(clone);
         }
+      }
+      if (document.getElementById("printSportsmanship").checked) {
+        // Insert a matching back page immediately after each front page.
+        // The page order is front 1, back 1, front 2, back 2, for duplex printing.
+        const frontSheets = [...sheets.querySelectorAll(".sheet")];
+        frontSheets.forEach(front => {
+          const back = document.createElement("div");
+          back.className = front.className + " sportsmanship-sheet";
+          const cards = [...front.querySelectorAll(".game-card")];
+          cards.forEach(card => {
+            const reverse = document.createElement("article");
+            reverse.className = "sportsmanship-card";
+            // Match the physical front card height without modifying front layout.
+            reverse.style.height = `${card.offsetHeight}px`;
+            reverse.innerHTML = `<h3>Colorado Flag Football Association (CFFO) Sportsmanship Code</h3>
+              <p>As members of the Colorado Flag Football Association (CFFO), we shall adhere to the highest standards of conduct and professionalism on and off the field of play. In partnership with coaches, administrators, and student-athletes, we will strive to promote the ideals of sportsmanship, integrity, and character through interscholastic flag football competition. We will expect all parties involved in any contest to exhibit these same ideals of sportsmanship and character. Best wishes to both teams for a great game.</p>
+              <p class="rating">Rate Your Game Officials at CHSAANow -&gt; Officials</p>`;
+            back.appendChild(reverse);
+          });
+          front.after(back);
+        });
       }
     }
 
@@ -1248,6 +1292,8 @@
         renderInputs();
         renderSheet();
       });
+
+      document.getElementById("printSportsmanship").addEventListener("change", renderSheet);
 
       // Print Button
       document.getElementById("printBtn").addEventListener("click", () => {
